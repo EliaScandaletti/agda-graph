@@ -1,16 +1,8 @@
 module Graph where
+  open import Agda.Builtin.Equality using (refl)
 
-  open import Level renaming (0ℓ to 0𝓁)
-  open import Agda.Builtin.Equality
-
-  open import Relation.Nullary using (Dec; yes; no; _⊎-dec_; _×-dec_)
-  open import Relation.Unary using (Pred; ∅; ｛_｝; _∪_; _≐_) 
-  open import Relation.Binary using (Rel; _⇔_; DecidableEquality)
-
-  open import Data.Empty using (⊥; ⊥-elim)
-  open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
-  open import Data.Product using (_×_; _,_; proj₁; proj₂)
-  open import Data.Bool using (true; false)
+  open import Data.Sum using (inj₁; inj₂)
+  open import Data.Product using (_,_)
 
   open import Graph.Core public
   open import Graph.Properties public
