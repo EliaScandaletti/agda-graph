@@ -1,6 +1,6 @@
 open import Relation.Binary using (DecidableEquality)
 
-module Graph.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} where
+module Graph.Undirected.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} where
   open import Level renaming (0ℓ to 0𝓁)
   open import Agda.Builtin.Equality
 
@@ -15,7 +15,7 @@ module Graph.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} where
   open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
   open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
-  open import Graph.Core
+  open import Graph.Undirected.Core {L}
   
   V-of? : (g : Graph) → (x : L) → Dec (x ∈V[ g ])
   V-of? ε         x = no (λ x₁ → x₁)
@@ -89,7 +89,7 @@ module Graph.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} where
   (g₁ + g₂) ⊆ⱽ? g₃ = (g₁ ⊆ⱽ? g₃) ∪-⊆-dec (g₂ ⊆ⱽ? g₃)
   (g₁ * g₂) ⊆ⱽ? g₃ = (g₁ ⊆ⱽ? g₃) ∪-⊆-dec (g₂ ⊆ⱽ? g₃)
 
-  _⊆ᴱ?_ : (g₁ g₂ : Graph {L}) → Dec ((E-of g₁) ⇒ (E-of g₂))
+  _⊆ᴱ?_ : (g₁ g₂ : Graph) → Dec ((E-of g₁) ⇒ (E-of g₂))
   ε         ⊆ᴱ? _  = yes ⊥-elim
   (v x)     ⊆ᴱ? _  = yes ⊥-elim
   (g₁ + g₂) ⊆ᴱ? g₃ =  (g₁ ⊆ᴱ? g₃) ⊎-⇒-dec (g₂ ⊆ᴱ? g₃)
