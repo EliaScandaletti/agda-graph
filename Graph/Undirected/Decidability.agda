@@ -2,26 +2,17 @@ open import Relation.Binary using (DecidableEquality)
 
 module Graph.Undirected.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} where
   open import Level renaming (0ℓ to 0𝓁)
-  open import Agda.Builtin.Equality
-
-  open import Function using (id)
-  
-  open import Relation.Nullary using (Dec; yes; no; _×-dec_; _⊎-dec_; _→-dec_)
-  open import Relation.Unary using (Pred; _⊆_; _⊈_; _∪_)
+  open import Agda.Builtin.Equality using (refl)
+  open import Function using (id)  
+  open import Relation.Nullary using (Dec; yes; no; _×-dec_; _⊎-dec_)
   open import Relation.Binary using (Rel; _⇒_)
+  open import Data.Empty using (⊥-elim)
+  open import Data.Sum using (_⊎_; inj₁; inj₂)
+  open import Data.Product using (_×_; _,_)
 
-  open import Data.Empty using (⊥; ⊥-elim)
-  open import Data.Bool using (true; false)
-  open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
-  open import Data.Product using (_×_; _,_; proj₁; proj₂)
-
-  open import Graph.Undirected.Core {L}
-  
-  V-of? : (g : Graph) → (x : L) → Dec (x ∈V[ g ])
-  V-of? ε         x = no (λ x₁ → x₁)
-  V-of? (v x₁)    x = x₁ ≟ᴸ x
-  V-of? (g₁ + g₂) x = (V-of? g₁ x) ⊎-dec (V-of? g₂ x)
-  V-of? (g₁ * g₂) x = (V-of? g₁ x) ⊎-dec (V-of? g₂ x)
+  open import Graph.Undirected.Core
+  open import Graph.Core.Decidability {L} {_≟ᴸ_}
+  open import Graph.Common.Definitions {L} {E-of}
   
   E-of? : (g : Graph) → (x y : L) → Dec (x ↦ y ∈E[ g ])
   E-of?  ε        x y = no id
@@ -32,11 +23,6 @@ module Graph.Undirected.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} 
                            ⊎-dec ((V-of? g₂ x) ×-dec (V-of? g₁ y))
 
   private
-    _∪-⊆-dec_ : {A : Set} {P Q R : Pred A 0𝓁} → Dec (P ⊆ Q) → Dec (R ⊆ Q) → Dec (P ∪ R ⊆ Q)
-    no  P⊈Q ∪-⊆-dec _       = no λ P∪R⊆Q → P⊈Q (λ x∈P → P∪R⊆Q (inj₁ x∈P))
-    yes _   ∪-⊆-dec no  R⊈Q = no λ P∪R⊆Q → R⊈Q (λ x∈R → P∪R⊆Q (inj₂ x∈R))
-    yes P⊆Q ∪-⊆-dec yes R⊆Q = yes λ { (inj₁ x∈P) → P⊆Q x∈P ; (inj₂ x∈R) → R⊆Q x∈R}
-
     _⊎-⇒-dec_ : {A : Set} {P Q R : Rel A 0𝓁} → Dec (P ⇒ Q) → Dec (R ⇒ Q) → Dec ((λ x y → P x y ⊎ R x y) ⇒ Q)
     no ¬P⇒Q ⊎-⇒-dec _        = no λ P⊎R⇒Q → ¬P⇒Q (λ xPy → P⊎R⇒Q (inj₁ xPy))
     yes _    ⊎-⇒-dec no ¬R⇒Q = no λ P⊎R⇒Q → ¬R⇒Q (λ xRy → P⊎R⇒Q (inj₂ xRy))
@@ -72,23 +58,6 @@ module Graph.Undirected.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} 
     ... | yes V₄×V₂⇒E₃ | yes V₅×V₂⇒E₃ = yes λ { (inj₁ x∈V₄ , y∈V₂) → V₄×V₂⇒E₃ (x∈V₄ , y∈V₂)
                                                 ; (inj₂ x∈V₅ , y∈V₂) → V₅×V₂⇒E₃ (x∈V₅ , y∈V₂)}
   
-  _⊆ⱽ?_ : (g₁ g₂ : Graph) → Dec ((V-of g₁) ⊆ (V-of g₂))
-  ε ⊆ⱽ? _ = yes (λ x → ⊥-elim x)
-  (v x) ⊆ⱽ? ε = no (λ Vₓ⊆∅ → Vₓ⊆∅ refl)
-  (v x₁) ⊆ⱽ? (v x₂) with x₂ ≟ᴸ x₁
-  ... | no  x₂≠x₁ = no (λ x → x₂≠x₁ (x refl))
-  ... | yes refl = yes (λ { refl → refl })
-  (v x) ⊆ⱽ? (g₂ + g₃) with (v x) ⊆ⱽ? g₂ | (v x) ⊆ⱽ? g₃
-  ... | no  Vₓ⊈V₂ | no  Vₓ⊈V₃ = no (λ x₁ → [ (λ x∈V₂ → Vₓ⊈V₂ λ { refl → x∈V₂}) , (λ x∈V₃ → Vₓ⊈V₃ (λ { refl → x∈V₃})) ] (x₁ refl))
-  ... | no  Vₓ⊈V₂ | yes Vₓ⊆V₃ = yes (λ refl → inj₂ (Vₓ⊆V₃ refl))
-  ... | yes Vₓ⊆V₂ | Q = yes (λ refl → inj₁ (Vₓ⊆V₂ refl))
-  (v x) ⊆ⱽ? (g₂ * g₃) with (v x) ⊆ⱽ? g₂ | (v x) ⊆ⱽ? g₃
-  ... | no  Vₓ⊈V₂ | no  Vₓ⊈V₃ = no (λ x₁ → [ (λ x∈V₂ → Vₓ⊈V₂ λ { refl → x∈V₂}) , (λ x∈V₃ → Vₓ⊈V₃ (λ { refl → x∈V₃})) ] (x₁ refl))
-  ... | no  Vₓ⊈V₂ | yes Vₓ⊆V₃ = yes (λ refl → inj₂ (Vₓ⊆V₃ refl))
-  ... | yes Vₓ⊆V₂ | Q = yes (λ refl → inj₁ (Vₓ⊆V₂ refl))
-  (g₁ + g₂) ⊆ⱽ? g₃ = (g₁ ⊆ⱽ? g₃) ∪-⊆-dec (g₂ ⊆ⱽ? g₃)
-  (g₁ * g₂) ⊆ⱽ? g₃ = (g₁ ⊆ⱽ? g₃) ∪-⊆-dec (g₂ ⊆ⱽ? g₃)
-
   _⊆ᴱ?_ : (g₁ g₂ : Graph) → Dec ((E-of g₁) ⇒ (E-of g₂))
   ε         ⊆ᴱ? _  = yes ⊥-elim
   (v x)     ⊆ᴱ? _  = yes ⊥-elim
@@ -97,8 +66,4 @@ module Graph.Undirected.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} 
                      (V×V⇒E? {g₁} {g₂} (V-of? g₁) (V-of? g₂) (E-of? g₃) ⊎-⇒-dec
                       V×V⇒E? {g₂} {g₁} (V-of? g₂) (V-of? g₁) (E-of? g₃))
 
-  _⊆ᵍ?_ : (g₁ g₂ : Graph) → Dec (g₁ ⊆ᵍ g₂)
-  g₁ ⊆ᵍ? g₂ = (g₁ ⊆ⱽ? g₂) ×-dec (g₁ ⊆ᴱ? g₂)
-
-  _≟_ : (g₁ g₂ : Graph) → Dec (g₁ ≡ᵍ g₂)
-  g₁ ≟ g₂ = (g₁ ⊆ᵍ? g₂) ×-dec (g₂ ⊆ᵍ? g₁)
+  open import Graph.Common.Decidability {L} {_≟ᴸ_} {E-of} {E-of?} {_⊆ᴱ?_} public
