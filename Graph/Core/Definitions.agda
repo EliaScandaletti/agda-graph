@@ -1,16 +1,14 @@
 module Graph.Core.Definitions {L : Set} where
-  open import Level renaming (0ℓ to 0𝓁)
-  open import Relation.Unary using (Pred; ∅; ｛_｝; _∪_; _⊆_)
+  open import Relation.Unary using (_⊆_)
 
   open import Graph.Core {L}
 
-  V-of : Graph → Pred L 0𝓁
-  V-of ε = ∅
-  V-of (v x) = ｛ x ｝
-  V-of (g₁ + g₂) = (V-of g₁) ∪ (V-of g₂)
-  V-of (g₁ * g₂) = (V-of g₁) ∪ (V-of g₂)
-  
-  syntax V-of g x = x ∈V[ g ]
-  
+  data _∈V[_] (x : L) : Graph → Set where
+    v-V : x ∈V[ (v x) ]
+    +-Vˡ : {g₁ g₂ : Graph} → x ∈V[ g₁ ] → x ∈V[ (g₁ + g₂)]
+    +-Vʳ : {g₁ g₂ : Graph} → x ∈V[ g₂ ] → x ∈V[ (g₁ + g₂)]
+    *-Vˡ : {g₁ g₂ : Graph} → x ∈V[ g₁ ] → x ∈V[ (g₁ * g₂)]
+    *-Vʳ : {g₁ g₂ : Graph} → x ∈V[ g₂ ] → x ∈V[ (g₁ * g₂)]
+
   _⊆ⱽ_ : Graph → Graph → Set
-  g₁ ⊆ⱽ g₂ = (V-of g₁) ⊆ (V-of g₂)
+  g₁ ⊆ⱽ g₂ = (_∈V[ g₁ ]) ⊆ (_∈V[ g₂ ])

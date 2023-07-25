@@ -1,10 +1,10 @@
 open import Graph.Core
-module Graph.Common.Properties {L : Set} {E-of : Graph {L} → L → L → Set} where  
+module Graph.Common.Properties {L : Set} {_↦_∈E[_] : L → L → Graph {L} → Set} where
   open import Function using (id; _∘_)
   open import Relation.Binary using (IsEquivalence)
   open import Data.Product using (_,_)
 
-  open import Graph.Common.Definitions {L} {E-of}
+  open import Graph.Common.Definitions {L} {_↦_∈E[_]}
 
   lemma-≡ᵍ-refl : {g : Graph} → g ≡ᵍ g
   lemma-≡ᵍ-refl = (id , id) , (id , id)

@@ -1,69 +1,169 @@
 open import Relation.Binary using (DecidableEquality)
 
 module Graph.Undirected.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} where
-  open import Level renaming (0ℓ to 0𝓁)
-  open import Agda.Builtin.Equality using (refl)
-  open import Function using (id)  
-  open import Relation.Nullary using (Dec; yes; no; _×-dec_; _⊎-dec_)
-  open import Relation.Binary using (Rel; _⇒_)
-  open import Data.Empty using (⊥-elim)
-  open import Data.Sum using (_⊎_; inj₁; inj₂)
-  open import Data.Product using (_×_; _,_)
+  open import Relation.Nullary using (Dec; yes; no)
+  open import Relation.Binary using (_⇒_)
+  open import Data.Empty using (⊥)
 
   open import Graph.Undirected.Core
   open import Graph.Core.Decidability {L} {_≟ᴸ_}
-  open import Graph.Common.Definitions {L} {E-of}
-  
+  open import Graph.Common.Definitions {L} {_↦_∈E[_]}
+
   E-of? : (g : Graph) → (x y : L) → Dec (x ↦ y ∈E[ g ])
-  E-of?  ε        x y = no id
-  E-of? (v w)     x y = no id
-  E-of? (g₁ + g₂) x y =  (E-of? g₁ x y) ⊎-dec (E-of? g₂ x y)
-  E-of? (g₁ * g₂) x y = ((E-of? g₁ x y) ⊎-dec (E-of? g₂ x y))
-                           ⊎-dec ((V-of? g₁ x) ×-dec (V-of? g₂ y))
-                           ⊎-dec ((V-of? g₂ x) ×-dec (V-of? g₁ y))
+  E-of?  ε        x y = no λ ()
+  E-of? (v w)     x y = no λ ()
+  E-of? (g₁ + g₂) x y with E-of? g₁ x y | E-of? g₂ x y
+  ... | no ¬xE₁y | no ¬xE₂y = no λ { (+-Eˡ xE₁y) → ¬xE₁y xE₁y ; (+-Eʳ xE₂y) → ¬xE₂y xE₂y}
+  ... | no ¬xE₁y | yes xE₂y = yes (+-Eʳ xE₂y)
+  ... | yes xE₁y | _        = yes (+-Eˡ xE₁y)
+  E-of? (g₁ * g₂) x y with E-of? g₁ x y | E-of? g₂ x y
+  ... | no ¬xE₁y | yes xE₂y = yes (*-Eʳ xE₂y)
+  ... | yes xE₁y | _        = yes (*-Eˡ xE₁y)
+  ... | no ¬xE₁y | no ¬xE₂y with V-of? g₁ x | V-of? g₁ y | V-of? g₂ x | V-of? g₂ y
+  ...                       | no  x∉V₁ | _        | no  x∉V₂ | _        = no λ { (*-Eˡ xE₁y) → ¬xE₁y xE₁y
+                                                                               ; (*-Eʳ xE₂y) → ¬xE₂y xE₂y
+                                                                               ; (*-Eˣ₁ x∈V₁ y∈V₂) → x∉V₁ x∈V₁
+                                                                               ; (*-Eˣ₂ y∈V₁ x∈V₂) → x∉V₂ x∈V₂}
+  ...                       | no  x∉V₁ | no  y∉V₁ | yes _    | _        = no λ { (*-Eˡ xE₁y) → ¬xE₁y xE₁y
+                                                                               ; (*-Eʳ xE₂y) → ¬xE₂y xE₂y
+                                                                               ; (*-Eˣ₁ x∈V₁ y∈V₂) → x∉V₁ x∈V₁
+                                                                               ; (*-Eˣ₂ y∈V₁ x∈V₂) → y∉V₁ y∈V₁}
+  ...                       | no  _    | yes y∈V₁ | yes x∈V₂ | _        = yes (*-Eˣ₂ y∈V₁ x∈V₂)
+  ...                       | yes _    | no  y∉V₁ | _        | no y∉V₂ = no λ { (*-Eˡ xE₁y) → ¬xE₁y xE₁y
+                                                                              ; (*-Eʳ xE₂y) → ¬xE₂y xE₂y
+                                                                              ; (*-Eˣ₁ x∈V₁ y∈V₂) → y∉V₂ y∈V₂
+                                                                              ; (*-Eˣ₂ y∈V₁ x∈V₂) → y∉V₁ y∈V₁}
+  ...                       | yes _    | yes _    | no  x∉V₂ | no  y∉V₂ = no λ { (*-Eˡ xE₁y) → ¬xE₁y xE₁y
+                                                                              ; (*-Eʳ xE₂y) → ¬xE₂y xE₂y
+                                                                              ; (*-Eˣ₁ x∈V₁ y∈V₂) → y∉V₂ y∈V₂
+                                                                              ; (*-Eˣ₂ y∈V₁ x∈V₂) → x∉V₂ x∈V₂}
+  ...                       | yes _    | yes y∈V₁ | yes x∈V₂ | no _     = yes (*-Eˣ₂ y∈V₁ x∈V₂)
+  ...                       | yes x∈V₁ | _        | _        | yes y∈V₂ = yes (*-Eˣ₁ x∈V₁ y∈V₂)
 
-  private
-    _⊎-⇒-dec_ : {A : Set} {P Q R : Rel A 0𝓁} → Dec (P ⇒ Q) → Dec (R ⇒ Q) → Dec ((λ x y → P x y ⊎ R x y) ⇒ Q)
-    no ¬P⇒Q ⊎-⇒-dec _        = no λ P⊎R⇒Q → ¬P⇒Q (λ xPy → P⊎R⇒Q (inj₁ xPy))
-    yes _    ⊎-⇒-dec no ¬R⇒Q = no λ P⊎R⇒Q → ¬R⇒Q (λ xRy → P⊎R⇒Q (inj₂ xRy))
-    yes P⇒Q ⊎-⇒-dec yes R⇒Q = yes λ { (inj₁ xPy) → P⇒Q xPy ; (inj₂ xRy) → R⇒Q xRy}
+  _⊆ᴱ?_ : (g₁ g₂ : Graph) → Dec (_↦_∈E[ g₁ ] ⇒ _↦_∈E[ g₂ ])
+  g₁ ⊆ᴱ? g₂ = go g₁ g₂ {wf g₁} {wf g₂} where
+    open import Relation.Binary.PropositionalEquality using (sym)
+    open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s) renaming (_<_ to _<ᴺ_; _+_ to _+ᴺ_)
+    open import Data.Nat.Properties using (m≤m+n; m≤n+m; +-monoʳ-≤; +-monoˡ-≤; +-suc; +-assoc)
+    open Data.Nat.Properties.≤-Reasoning
+    open import Graph.Core.Recursion using (#_; Acc; acc; _<_; lift; wf)
+    l-+ : {g₃ g₄ : Graph} → g₃ < (g₃ + g₄)
+    l-+ {g₃} {g₄} = lift (s≤s (m≤m+n (# g₃) (# g₄)))
+    r-+ : {g₃ g₄ : Graph} → g₄ < (g₃ + g₄)
+    r-+ {g₃} {g₄} = lift (s≤s (m≤n+m (# g₄) (# g₃)))
+    l-* : {g₃ g₄ : Graph} → g₃ < (g₃ * g₄)
+    l-* {g₃} {g₄} = lift (s≤s (m≤m+n (# g₃) (# g₄)))
+    r-* : {g₃ g₄ : Graph} → g₄ < (g₃ * g₄)
+    r-* {g₃} {g₄} = lift (s≤s (m≤n+m (# g₄) (# g₃)))
+    l-*-+ : {g₃ g₄ g₅ : Graph} → (g₃ * g₄) < (g₃ * (g₄ + g₅))
+    l-*-+ {g₃} {g₄} {g₅} = lift (s≤s (begin
+      suc ((# g₃) +ᴺ (# g₄))               ≤⟨ s≤s (+-monoʳ-≤ (# g₃) (m≤m+n (# g₄) (# g₅))) ⟩
+      suc ((# g₃) +ᴺ ((# g₄) +ᴺ (# g₅)))   ≡⟨ sym (+-suc (# g₃) ((# g₄) +ᴺ (# g₅))) ⟩
+      ((# g₃) +ᴺ (suc ((# g₄) +ᴺ (# g₅)))) ∎))
+    r-*-+ : {g₃ g₄ g₅ : Graph} → (g₃ * g₅) < (g₃ * (g₄ + g₅))
+    r-*-+ {g₃} {g₄} {g₅} = lift (s≤s (begin
+      suc ((# g₃) +ᴺ (# g₅))               ≤⟨ s≤s (+-monoʳ-≤ (# g₃) (m≤n+m (# g₅) (# g₄))) ⟩
+      suc ((# g₃) +ᴺ ((# g₄) +ᴺ (# g₅)))   ≡⟨ sym (+-suc (# g₃) ((# g₄) +ᴺ (# g₅))) ⟩
+      ((# g₃) +ᴺ (suc ((# g₄) +ᴺ (# g₅)))) ∎))
+    l-*-*₁ : {g₃ g₄ g₅ : Graph} → (g₃ * g₄) < (g₃ * (g₄ * g₅))
+    l-*-*₁ {g₃} {g₄} {g₅} = lift (s≤s (begin
+      suc ((# g₃) +ᴺ (# g₄))               ≤⟨ s≤s (+-monoʳ-≤ (# g₃) (m≤m+n (# g₄) (# g₅))) ⟩
+      suc ((# g₃) +ᴺ ((# g₄) +ᴺ (# g₅)))   ≡⟨ sym (+-suc (# g₃) ((# g₄) +ᴺ (# g₅))) ⟩
+      ((# g₃) +ᴺ (suc ((# g₄) +ᴺ (# g₅)))) ∎))
+    r-*-*₁ : {g₃ g₄ g₅ : Graph} → (g₃ * g₅) < (g₃ * (g₄ * g₅))
+    r-*-*₁ {g₃} {g₄} {g₅ } = lift (s≤s (begin
+      suc ((# g₃) +ᴺ (# g₅))               ≤⟨ s≤s (+-monoʳ-≤ (# g₃) (m≤n+m (# g₅) (# g₄))) ⟩
+      suc ((# g₃) +ᴺ ((# g₄) +ᴺ (# g₅)))   ≡⟨ sym (+-suc (# g₃) ((# g₄) +ᴺ (# g₅))) ⟩
+      ((# g₃) +ᴺ (suc ((# g₄) +ᴺ (# g₅)))) ∎))
+    l-+-* : {g₃ g₄ g₅ : Graph} → (g₃ * g₅) < ((g₃ + g₄) * g₅)
+    l-+-* {g₃} {g₄} {g₅} = lift (s≤s (s≤s (begin
+      ((# g₃) +ᴺ (# g₅))             ≤⟨ +-monoʳ-≤ (# g₃) (m≤n+m (# g₅) (# g₄)) ⟩
+      ((# g₃) +ᴺ ((# g₄) +ᴺ (# g₅))) ≡⟨ sym (+-assoc (# g₃) (# g₄) (# g₅)) ⟩
+      (((# g₃) +ᴺ (# g₄)) +ᴺ (# g₅)) ∎)))
+    r-+-* : {g₃ g₄ g₅ : Graph} → (g₄ * g₅) < ((g₃ + g₄) * g₅)
+    r-+-* {g₃} {g₄} {g₅} = lift (s≤s (s≤s (+-monoˡ-≤ (# g₅) (m≤n+m (# g₄) (# g₃)))))
+    l-*-*₂ : {g₃ g₄ g₅ : Graph} → (g₃ * g₅) < ((g₃ * g₄) * g₅)
+    l-*-*₂ {g₃} {g₄} {g₅} = lift (s≤s (s≤s (+-monoˡ-≤ (# g₅) (m≤m+n (# g₃) (# g₄)))))
+    r-*-*₂ : {g₃ g₄ g₅ : Graph} → (g₄ * g₅) < ((g₃ * g₄) * g₅)
+    r-*-*₂ {g₃} {g₄} {g₅} = lift (s≤s (s≤s (+-monoˡ-≤ (# g₅) (m≤n+m (# g₄) (# g₃)))))
 
-    V×V⇒E? : {g₁ g₂ g₃ : Graph} → ((x : L) → Dec (x ∈V[ g₁ ])) → ((y : L) → Dec (y ∈V[ g₂ ]))→ ((x y : L) → Dec (x ↦ y ∈E[ g₃ ]))
-                                 → Dec ((λ x y → V-of g₁ x × V-of g₂ y) ⇒ E-of g₃)
-    V×V⇒E? {ε}         _∈V₁? _∈V₂? _↦_∈E₃? = yes λ ()
-    V×V⇒E? {v x} {ε}   _∈V₁? _∈V₂? _↦_∈E₃? = yes λ ()
-    V×V⇒E? {v x} {v y} _∈V₁? _∈V₂? _↦_∈E₃? with x ∈V₁? | y ∈V₂? | x ↦ y ∈E₃?
-    ... | no x≠x | _      | _ = ⊥-elim (x≠x refl)
-    ... | yes _  | no y≠y | _ = ⊥-elim (y≠y refl)
-    ... | yes _  | yes _  | no ¬xE₃y = no λ x₁ → ¬xE₃y (x₁ (refl , refl))
-    ... | yes _  | yes _  | yes xE₃y = yes λ { (refl , refl) → xE₃y}
-    V×V⇒E? {v x} {g₄ + g₅} _∈V₁? _∈V₂? _↦_∈E₃? with V×V⇒E? {v x} {g₄} _∈V₁? (V-of? g₄) _↦_∈E₃? | V×V⇒E? {v x} {g₅} _∈V₁? (V-of? g₅) _↦_∈E₃?
-    ... | no ¬x×V₄⇒E₃ | _            = no λ x₁ → ¬x×V₄⇒E₃ λ { (refl , y∈V₄) → x₁ (refl , (inj₁ y∈V₄))}
-    ... | yes _        | no ¬x×V₅⇒E₃ = no λ x₁ → ¬x×V₅⇒E₃ λ { (refl , y∈V₅) → x₁ (refl , (inj₂ y∈V₅))}
-    ... | yes x×V₄⇒E₃ | yes x×V₅⇒E₃ = yes λ { (refl , inj₁ y∈V₄) → x×V₄⇒E₃ (refl , y∈V₄)
-                                              ; (refl , inj₂ y∈V₅) → x×V₅⇒E₃ (refl , y∈V₅)}
-    V×V⇒E? {v x} {g₄ * g₅} _∈V₁? _∈V₂? _↦_∈E₃? with V×V⇒E? {v x} {g₄} _∈V₁? (V-of? g₄) _↦_∈E₃? | V×V⇒E? {v x} {g₅} _∈V₁? (V-of? g₅) _↦_∈E₃?
-    ... | no ¬x×V₄⇒E₃ | _            = no λ x₁ → ¬x×V₄⇒E₃ λ { (refl , y∈V₄) → x₁ (refl , (inj₁ y∈V₄))}
-    ... | yes _        | no ¬x×V₅⇒E₃ = no λ x₁ → ¬x×V₅⇒E₃ λ { (refl , y∈V₅) → x₁ (refl , (inj₂ y∈V₅))}
-    ... | yes x×V₄⇒E₃ | yes x×V₅⇒E₃ = yes λ { (refl , inj₁ y∈V₄) → x×V₄⇒E₃ (refl , y∈V₄)
-                                              ; (refl , inj₂ y∈V₅) → x×V₅⇒E₃ (refl , y∈V₅)}
-    V×V⇒E? {g₄ + g₅} {g₂}  _∈V₁? _∈V₂? _↦_∈E₃? with V×V⇒E? {g₄} {g₂} (V-of? g₄) _∈V₂?  _↦_∈E₃? | V×V⇒E? {g₅} {g₂} (V-of? g₅) _∈V₂?  _↦_∈E₃?
-    ... | no ¬V₄×V₂⇒E₃ | _             = no λ x₁ → ¬V₄×V₂⇒E₃ λ (x∈V₄ , x∈V₂) → x₁ (inj₁ x∈V₄ , x∈V₂)
-    ... | yes _         | no ¬V₅×V₂⇒E₃ = no λ x₁ → ¬V₅×V₂⇒E₃ λ (x∈V₅ , x∈V₂) → x₁ (inj₂ x∈V₅ , x∈V₂)
-    ... | yes V₄×V₂⇒E₃ | yes V₅×V₂⇒E₃ = yes λ { (inj₁ x∈V₄ , y∈V₂) → V₄×V₂⇒E₃ (x∈V₄ , y∈V₂)
-                                                ; (inj₂ x∈V₅ , y∈V₂) → V₅×V₂⇒E₃ (x∈V₅ , y∈V₂)}
-    V×V⇒E? {g₄ * g₅} {g₂}  _∈V₁? _∈V₂? _↦_∈E₃? with V×V⇒E? {g₄} {g₂} (V-of? g₄) _∈V₂?  _↦_∈E₃? | V×V⇒E? {g₅} {g₂} (V-of? g₅) _∈V₂?  _↦_∈E₃?
-    ... | no ¬V₄×V₂⇒E₃ | _             = no λ x₁ → ¬V₄×V₂⇒E₃ λ (x∈V₄ , x∈V₂) → x₁ (inj₁ x∈V₄ , x∈V₂)
-    ... | yes _         | no ¬V₅×V₂⇒E₃ = no λ x₁ → ¬V₅×V₂⇒E₃ λ (x∈V₅ , x∈V₂) → x₁ (inj₂ x∈V₅ , x∈V₂)
-    ... | yes V₄×V₂⇒E₃ | yes V₅×V₂⇒E₃ = yes λ { (inj₁ x∈V₄ , y∈V₂) → V₄×V₂⇒E₃ (x∈V₄ , y∈V₂)
-                                                ; (inj₂ x∈V₅ , y∈V₂) → V₅×V₂⇒E₃ (x∈V₅ , y∈V₂)}
-  
-  _⊆ᴱ?_ : (g₁ g₂ : Graph) → Dec ((E-of g₁) ⇒ (E-of g₂))
-  ε         ⊆ᴱ? _  = yes ⊥-elim
-  (v x)     ⊆ᴱ? _  = yes ⊥-elim
-  (g₁ + g₂) ⊆ᴱ? g₃ =  (g₁ ⊆ᴱ? g₃) ⊎-⇒-dec (g₂ ⊆ᴱ? g₃)
-  (g₁ * g₂) ⊆ᴱ? g₃ = ((g₁ ⊆ᴱ? g₃) ⊎-⇒-dec (g₂ ⊆ᴱ? g₃)) ⊎-⇒-dec
-                     (V×V⇒E? {g₁} {g₂} (V-of? g₁) (V-of? g₂) (E-of? g₃) ⊎-⇒-dec
-                      V×V⇒E? {g₂} {g₁} (V-of? g₂) (V-of? g₁) (E-of? g₃))
+    go : (g₁ g₂ : Graph) → {Acc g₁} → {Acc g₂} → Dec (_↦_∈E[ g₁ ] ⇒ _↦_∈E[ g₂ ])
+    go ε         _  = yes λ ()
+    go (v x)     _  = yes λ ()
+    go (g₁ + g₂) g₃ {acc step} {a₃} with go g₁ g₃ {step l-+} {a₃} | go g₂ g₃ {step r-+} {a₃}
+    ... | no  E₁⊈E₃ | _         = no helper where
+      helper : ({x y : L} → x ↦ y ∈E[ g₁ + g₂ ] → x ↦ y ∈E[ g₃ ]) → ⊥
+      helper p = E₁⊈E₃ (λ z → p (+-Eˡ z))
+    ... | yes E₁⊆E₃ | no  E₂⊈E₃ = no helper where
+      helper : ({x y : L} → x ↦ y ∈E[ g₁ + g₂ ] → x ↦ y ∈E[ g₃ ]) → ⊥
+      helper p = E₂⊈E₃ (λ z → p (+-Eʳ z))
+    ... | yes E₁⊆E₃ | yes E₂⊆E₃ = yes λ { (+-Eˡ x) → E₁⊆E₃ x ; (+-Eʳ x) → E₂⊆E₃ x}
+    go (g₁ * g₂) g₃ {acc step} {a₃} with go g₁ g₃ {step l-*} {a₃} | go g₂ g₃ {step r-*} {a₃}
+    ... | no  E₁⊈E₃ | _         = no helper where
+      helper : ({x y : L} → x ↦ y ∈E[ g₁ * g₂ ] → x ↦ y ∈E[ g₃ ]) → ⊥
+      helper p = E₁⊈E₃ (λ z → p (*-Eˡ z))
+    ... | yes E₁⊆E₃ | no  E₂⊈E₃ = no helper where
+      helper : ({x y : L} → x ↦ y ∈E[ g₁ * g₂ ] → x ↦ y ∈E[ g₃ ]) → ⊥
+      helper p = E₂⊈E₃ (λ z → p (*-Eʳ z))
+    go ( ε    * g₂)    g₃ | yes _ | yes E₂⊆E₃ = yes λ { (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y}
+    go ((v x) *  ε)    g₃ | yes _ | yes E₂⊆E₃ = yes λ { (*-Eˡ ()) ; (*-Eʳ ()) ; (*-Eˣ₁ v-V ())}
+    go ((v x) * (v y)) g₃ | yes E₁⊆E₃ | yes E₂⊆E₃ with E-of? g₃ x y | E-of? g₃ y x
+    ... | no ¬xE₃y | _        = no λ {p → ¬xE₃y (p (*-Eˣ₁ v-V v-V))}
+    ... | yes _    | no ¬yE₃x = no λ {p → ¬yE₃x (p (*-Eˣ₂ v-V v-V))}
+    ... | yes xE₃y | yes yE₃x = yes λ { (*-Eˣ₁ v-V v-V) → xE₃y ; (*-Eˣ₂ v-V v-V) → yE₃x}
+    go ((v x) * (g₄ + g₅)) g₃ {acc step} {a₃} | yes E₁⊆E₃ | yes E₂⊆E₃ with go ((v x) * g₄) g₃ {step l-*-+} {a₃} | go ((v x) * g₅) g₃ {step r-*-+} {a₃}
+    ... | no  Eₓ⋆₄⊈E₃ | _           = no λ p → Eₓ⋆₄⊈E₃ λ { (*-Eʳ x∈V₄) → E₂⊆E₃ (+-Eˡ x∈V₄)
+                                                         ; (*-Eˣ₁ x∈Vₓ y∈V₄) → p (*-Eˣ₁ x∈Vₓ (+-Vˡ y∈V₄))
+                                                         ; (*-Eˣ₂ y∈Vₓ x∈V₄) → p (*-Eˣ₂ y∈Vₓ (+-Vˡ x∈V₄))}
+    ... | yes _       | no  Eₓ⋆₅⊈E₃ = no λ p → Eₓ⋆₅⊈E₃ λ { (*-Eʳ x∈V₅) → E₂⊆E₃ (+-Eʳ x∈V₅)
+                                                         ; (*-Eˣ₁ x∈Vₓ y∈V₅) → p (*-Eˣ₁ x∈Vₓ (+-Vʳ y∈V₅))
+                                                         ; (*-Eˣ₂ y∈Vₓ x∈V₅) → p (*-Eˣ₂ y∈Vₓ (+-Vʳ x∈V₅))}
+    ... | yes Eₓ⋆₄⊆E₃ | yes Eₓ⋆₅⊆E₃ = yes λ { (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y
+                                           ; (*-Eˣ₁ v-V (+-Vˡ y∈V₄)) → Eₓ⋆₄⊆E₃ (*-Eˣ₁ v-V y∈V₄)
+                                           ; (*-Eˣ₁ v-V (+-Vʳ y∈V₅)) → Eₓ⋆₅⊆E₃ (*-Eˣ₁ v-V y∈V₅)
+                                           ; (*-Eˣ₂ v-V (+-Vˡ x∈V₄)) → Eₓ⋆₄⊆E₃ (*-Eˣ₂ v-V x∈V₄)
+                                           ; (*-Eˣ₂ v-V (+-Vʳ x∈V₅)) → Eₓ⋆₅⊆E₃ (*-Eˣ₂ v-V x∈V₅)}
+    go ((v x) * (g₄ * g₅)) g₃ {acc step} {a₃} | yes E₁⊆E₃ | yes E₂⊆E₃ with go ((v x) * g₄) g₃ {step l-*-*₁} {a₃} | go ((v x) * g₅) g₃ {step r-*-*₁} {a₃}
+    ... | no  Eₓ⋆₄⊈E₃ | _           = no λ p → Eₓ⋆₄⊈E₃ λ { (*-Eʳ x∈V₄) → E₂⊆E₃ (*-Eˡ x∈V₄)
+                                                         ; (*-Eˣ₁ x∈Vₓ y∈V₄) → p (*-Eˣ₁ x∈Vₓ (*-Vˡ y∈V₄))
+                                                         ; (*-Eˣ₂ y∈Vₓ x∈V₄) → p (*-Eˣ₂ y∈Vₓ (*-Vˡ x∈V₄))}
+    ... | yes _       | no  Eₓ⋆₅⊈E₃ = no λ p → Eₓ⋆₅⊈E₃ λ { (*-Eʳ x∈V₅) → E₂⊆E₃ (*-Eʳ x∈V₅)
+                                                         ; (*-Eˣ₁ x∈Vₓ y∈V₅) → p (*-Eˣ₁ x∈Vₓ (*-Vʳ y∈V₅))
+                                                         ; (*-Eˣ₂ y∈Vₓ x∈V₅) → p (*-Eˣ₂ y∈Vₓ (*-Vʳ x∈V₅))}
+    ... | yes Eₓ⋆₄⊆E₃ | yes Eₓ⋆₅⊆E₃ = yes λ { (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y
+                                           ; (*-Eˣ₁ v-V (*-Vˡ y∈V₄)) → Eₓ⋆₄⊆E₃ (*-Eˣ₁ v-V y∈V₄)
+                                           ; (*-Eˣ₁ v-V (*-Vʳ y∈V₅)) → Eₓ⋆₅⊆E₃ (*-Eˣ₁ v-V y∈V₅)
+                                           ; (*-Eˣ₂ v-V (*-Vˡ x∈V₄)) → Eₓ⋆₄⊆E₃ (*-Eˣ₂ v-V x∈V₄)
+                                           ; (*-Eˣ₂ v-V (*-Vʳ x∈V₅)) → Eₓ⋆₅⊆E₃ (*-Eˣ₂ v-V x∈V₅)}
+    go ((g₄ + g₅) *  g₂) g₃ {acc step} {a₃} | yes E₁⊆E₃ | yes E₂⊆E₃ with go (g₄ * g₂) g₃ {step l-+-*} {a₃} | go (g₅ * g₂) g₃ {step r-+-*} {a₃}
+    ... | no  E₄⋆₂⊈E₃ | _           = no λ p → E₄⋆₂⊈E₃ λ { (*-Eˡ xE₄y) → p (*-Eˡ (+-Eˡ xE₄y))
+                                                          ; (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y
+                                                          ; (*-Eˣ₁ x∈V₄ y∈V₂) → p (*-Eˣ₁ (+-Vˡ x∈V₄) y∈V₂)
+                                                          ; (*-Eˣ₂ y∈V₄ x∈V₂) → p (*-Eˣ₂ (+-Vˡ y∈V₄) x∈V₂)}
+    ... | yes _       | no  E₅⋆₂⊈E₃ = no λ p → E₅⋆₂⊈E₃ λ { (*-Eˡ xE₅y) → E₁⊆E₃ (+-Eʳ xE₅y)
+                                                          ; (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y
+                                                          ; (*-Eˣ₁ x∈V₅ y∈V₂) → p (*-Eˣ₁ (+-Vʳ x∈V₅) y∈V₂)
+                                                          ; (*-Eˣ₂ y∈V₅ x∈V₂) → p (*-Eˣ₂ (+-Vʳ y∈V₅) x∈V₂)}
+    ... | yes E₄⋆₂⊆E₃ | yes E₅⋆₂⊆E₅ = yes λ { (*-Eˡ xE₁y) → E₁⊆E₃ xE₁y
+                                            ; (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y
+                                            ; (*-Eˣ₁ (+-Vˡ x∈V₁) y∈V₂) → E₄⋆₂⊆E₃ (*-Eˣ₁ x∈V₁ y∈V₂)
+                                            ; (*-Eˣ₁ (+-Vʳ x∈V₁) y∈V₂) → E₅⋆₂⊆E₅ (*-Eˣ₁ x∈V₁ y∈V₂)
+                                            ; (*-Eˣ₂ (+-Vˡ y∈V₁) x∈V₂) → E₄⋆₂⊆E₃ (*-Eˣ₂ y∈V₁ x∈V₂)
+                                            ; (*-Eˣ₂ (+-Vʳ y∈V₁) x∈V₂) → E₅⋆₂⊆E₅ (*-Eˣ₂ y∈V₁ x∈V₂)}
+    go ((g₄ * g₅) *  g₂) g₃ {acc step} {a₃} | yes E₁⊆E₃ | yes E₂⊆E₃ with go (g₄ * g₂) g₃  {step l-*-*₂} {a₃} | go (g₅ * g₂) g₃ {step r-*-*₂} {a₃}
+    ... | no  E₄⋆₂⊈E₃ | _           = no λ p → E₄⋆₂⊈E₃ λ { (*-Eˡ xE₄y) → p (*-Eˡ (*-Eˡ xE₄y))
+                                                         ; (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y
+                                                         ; (*-Eˣ₁ x∈V₄ y∈V₂) → p (*-Eˣ₁ (*-Vˡ x∈V₄) y∈V₂)
+                                                         ; (*-Eˣ₂ y∈V₄ x∈V₂) → p (*-Eˣ₂ (*-Vˡ y∈V₄) x∈V₂)}
+    ... | yes _       | no  E₅⋆₂⊈E₃ = no λ p → E₅⋆₂⊈E₃ λ { (*-Eˡ xE₅y) → E₁⊆E₃ (*-Eʳ xE₅y)
+                                                         ; (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y
+                                                         ; (*-Eˣ₁ x∈V₅ y∈V₂) → p (*-Eˣ₁ (*-Vʳ x∈V₅) y∈V₂)
+                                                         ; (*-Eˣ₂ y∈V₅ x∈V₂) → p (*-Eˣ₂ (*-Vʳ y∈V₅) x∈V₂)}
+    ... | yes E₄⋆₂⊆E₃ | yes E₅⋆₂⊆E₅ = yes λ { (*-Eˡ xE₁y) → E₁⊆E₃ xE₁y
+                                            ; (*-Eʳ xE₂y) → E₂⊆E₃ xE₂y
+                                            ; (*-Eˣ₁ (*-Vˡ x∈V₁) y∈V₂) → E₄⋆₂⊆E₃ (*-Eˣ₁ x∈V₁ y∈V₂)
+                                            ; (*-Eˣ₁ (*-Vʳ x∈V₁) y∈V₂) → E₅⋆₂⊆E₅ (*-Eˣ₁ x∈V₁ y∈V₂)
+                                            ; (*-Eˣ₂ (*-Vˡ y∈V₁) x∈V₂) → E₄⋆₂⊆E₃ (*-Eˣ₂ y∈V₁ x∈V₂)
+                                            ; (*-Eˣ₂ (*-Vʳ y∈V₁) x∈V₂) → E₅⋆₂⊆E₅ (*-Eˣ₂ y∈V₁ x∈V₂)}
 
-  open import Graph.Common.Decidability {L} {_≟ᴸ_} {E-of} {E-of?} {_⊆ᴱ?_} public
+  open import Graph.Common.Decidability {L} {_≟ᴸ_} {_↦_∈E[_]} {E-of?} {_⊆ᴱ?_} public

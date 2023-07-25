@@ -4,13 +4,13 @@ open import Relation.Binary using (DecidableEquality; _⇒_)
 
 module Graph.Common.Decidability
     {L : Set} {_≟ᴸ_ : DecidableEquality L}
-    {E-of : Graph {L} → L → L → Set}
-    {E-of? : (g : Graph) → (x y : L) → Dec (E-of g x y)}
-    {_⊆ᴱ?_ : (g₁ g₂ : Graph {L}) → Dec ((E-of g₁) ⇒ (E-of g₂))} where
+    {_↦_∈E[_] : L → L → Graph {L} → Set}
+    {E-of? : (g : Graph) → (x y : L) → Dec (x ↦ y ∈E[ g ])}
+    {_⊆ᴱ?_ : (g₁ g₂ : Graph {L}) → Dec (_↦_∈E[ g₁ ] ⇒ _↦_∈E[ g₂ ])} where
   open import Relation.Nullary using (_×-dec_)
 
   open import Graph.Core.Decidability {L} {_≟ᴸ_}
-  open import Graph.Common.Definitions {L} {E-of}
+  open import Graph.Common.Definitions {L} {_↦_∈E[_]}
 
   _⊆ᵍ?_ : (g₁ g₂ : Graph) → Dec (g₁ ⊆ᵍ g₂)
   g₁ ⊆ᵍ? g₂ = (g₁ ⊆ⱽ? g₂) ×-dec (g₁ ⊆ᴱ? g₂)
