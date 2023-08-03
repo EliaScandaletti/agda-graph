@@ -19,7 +19,8 @@ The `Common` module uses this predicate to specialize to different types of grap
 This module requires to know a predicate defining the edge set of a graph.
 - `Common.Definitions` defines a subset relation on edge sets, a subset relation on graphs and an equivalence on graphs;
 - `Common.Properties` proves that the previously defined equivalence is really an equivalence and some properties of the subset relation between graphs;
-- `Common.Decidability` assuming that an edge belonging to a graph is decidable and that the labels have a decidable equality, proves that the predicates given in `Common.Definitions` are decidable.
+- `Common.Decidability` assuming that an edge belonging to a graph is decidable and that the labels have a decidable equality, proves that the predicates given in `Common.Definitions` are decidable;
+- `Common.Weighted` defines weighted graphs.
 
 #### `Directed`
 This module defines directed graphs.
