@@ -12,7 +12,8 @@ The `Common` module uses this predicate to specialize to different types of grap
 #### `Core`
 - `Core` contains the definition of `Graph`;
 - `Core.Definitions` defines the predicate for the vertex set of a graph and a subset relation between them;
-- `Core.Decidability` assuming that the vertex labels have a decidable equality, proves that the predicates given in `Core.Definitions` are decidable.
+- `Core.Decidability` assuming that the vertex labels have a decidable equality, proves that the predicates given in `Core.Definitions` are decidable;
+- `Core.Recursion` proves that recursion on the definition size of the graph -i.e. the number of Graph constructors used- is well-founded.
 
 #### `Common`
 This module requires to know a predicate defining the edge set of a graph.
