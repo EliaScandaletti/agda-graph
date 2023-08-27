@@ -7,7 +7,7 @@ module Graph.Common.Algo.List where
   open import Relation.Binary renaming (Decidable to Dec₂)
   open import Data.Empty using (⊥-elim)
   open import Data.Sum using (_⊎_; inj₁; inj₂; map₁)
-  open import Data.Product using (_×_; _,_)
+  open import Data.Product using (Σ; _×_; _,_)
   open import Data.Bool using (not)
   open import Data.List using (List; []; _∷_; _++_; filter; deduplicate; cartesianProduct; map)
   open import Data.List.Relation.Unary.All using (All)
@@ -30,9 +30,18 @@ module Graph.Common.Algo.List where
     ... | no  x∉xs = no (λ { here → x≠x₁ refl ; (there x∈xs) → x∉xs x∈xs})
     ... | yes x∈xs = yes (there x∈xs)
 
+    list-≟ : (l₁ l₂ : List A) → Dec (l₁ ≡ l₂)
+    list-≟ [] [] = yes refl
+    list-≟ [] (_ ∷ _) = no (λ ())
+    list-≟ (_ ∷ _) [] = no (λ ())
+    list-≟ (x₁ ∷ l₁) (x₂ ∷ l₂) with x₁ ≟ x₂ | list-≟ l₁ l₂
+    ... | no  x₁≠x₂ | _ = no λ { refl → x₁≠x₂ refl}
+    ... | yes refl  | no l₁≠l₂ = no λ { refl → l₁≠l₂ refl}
+    ... | yes refl  | yes refl = yes refl
+
     _≠?_ : (x₁ x₂ : A) → Dec (¬ x₁ ≡ x₂)
     x₁ ≠? x₂ = ¬? (x₁ ≟ x₂)
-   
+    
     _++ᵘ_ : (xs ys : List A) → List A
     [] ++ᵘ ys = ys
     (x ∷ xs) ++ᵘ ys with x ∈? ys
@@ -118,7 +127,6 @@ module Graph.Common.Algo.List where
 
     unique-deduplicate : (l : List A) → Unique (deduplicate _≟_ l)
     unique-deduplicate [] = AllPairs.[]
-    unique-deduplicate (x ∷ []) = All.[] AllPairs.∷ AllPairs.[]
     unique-deduplicate (x ∷ l) = all-filter (x ≠?_) (deduplicate _≟_ l) AllPairs.∷ unique-filter (x ≠?_) (deduplicate _≟_ l) (unique-deduplicate l)
 
     AllP⇒Px : {x : A} {l : List A} {P : A → Set} → All P l → x ∈ l → P x
@@ -147,14 +155,20 @@ module Graph.Common.Algo.List where
     ∈-++ʳ [] l x∈l = x∈l
     ∈-++ʳ (x′ ∷ l′) l x∈l = there (∈-++ʳ l′ l x∈l)
 
-  module Cartesian {A B : Set} {_≟ᴬ_ : DecidableEquality A} {_≟ᴮ_ : DecidableEquality B} {_≟ˣ_ : DecidableEquality (A × B)} where
-    open Core
+  module Core₂ {A B : Set} {_≟ᴬ_ : DecidableEquality A} {_≟ᴮ_ : DecidableEquality B} where
+    open Core {A} {_≟ᴬ_} renaming (_∈_ to _∈ᴬ_)
+    open Core {B} {_≟ᴮ_} renaming (_∈_ to _∈ᴮ_; here to hereᴮ; there to thereᴮ)
 
-    ∈-map : {x : A} {y : B} {l : List B} → _∈_ {B} {_≟ᴮ_} y l → _∈_ {A × B} {_≟ˣ_} (x , y) (map (x ,_) l)
-    ∈-map here = here
-    ∈-map (there y∈l) = there (∈-map y∈l)
-    
-    ∈-cartesianProduct : {x₁ : A} {x₂ : B} (l₁ : List A) → (l₂ : List B) → _∈_ {A} {_≟ᴬ_} x₁ l₁ → _∈_ {B} {_≟ᴮ_} x₂ l₂ → _∈_ {A × B} {_≟ˣ_} (x₁ , x₂) (cartesianProduct l₁ l₂)
-    ∈-cartesianProduct (x ∷ l₁) (x₁ ∷ l₂) here here = here
-    ∈-cartesianProduct (x₁′ ∷ l₁) (x₂′ ∷ l₂′) here (there x₂∈l₂′) = ∈-++ˡ ((x₁′ , x₂′) ∷ map (_,_ x₁′) l₂′) (cartesianProduct l₁ (x₂′ ∷ l₂′)) (there (∈-map x₂∈l₂′))
-    ∈-cartesianProduct (x₁′ ∷ l₁) (x₂′ ∷ l₂′) (there x₁∈l₁) x₂∈l₂ = ∈-++ʳ ((x₁′ , x₂′) ∷ map (_,_ x₁′) l₂′) (cartesianProduct l₁ (x₂′ ∷ l₂′)) (∈-cartesianProduct l₁ (x₂′ ∷ l₂′) x₁∈l₁ x₂∈l₂)
+    ∈-map : {x : A} {l : List A} (f : A → B) → x ∈ᴬ l → f x ∈ᴮ map f l
+    ∈-map f here = hereᴮ
+    ∈-map f (there x∈l) = thereᴮ (∈-map f x∈l)
+
+  module Cartesian {A B : Set} {_≟ᴬ_ : DecidableEquality A} {_≟ᴮ_ : DecidableEquality B} {_≟ˣ_ : DecidableEquality (A × B)} where
+    open Core {A} {_≟ᴬ_} hiding (∈-++ˡ; ∈-++ʳ) renaming (_∈_ to _∈ᴬ_; here to hereᴬ; there to thereᴬ)
+    open Core {B} {_≟ᴮ_} hiding (∈-++ˡ; ∈-++ʳ) renaming (_∈_ to _∈ᴮ_; here to hereᴮ; there to thereᴮ)
+    open Core {A × B} {_≟ˣ_} renaming (_∈_ to _∈ˣ_; here to hereˣ; there to thereˣ)
+
+    ∈-cartesianProduct : {x₁ : A} {x₂ : B} (l₁ : List A) → (l₂ : List B) → x₁ ∈ᴬ l₁ → x₂ ∈ᴮ l₂ → (x₁ , x₂) ∈ˣ (cartesianProduct l₁ l₂)
+    ∈-cartesianProduct (x ∷ l₁) (x₁ ∷ l₂) hereᴬ hereᴮ = hereˣ
+    ∈-cartesianProduct (x₁′ ∷ l₁) (x₂′ ∷ l₂′) hereᴬ (thereᴮ x₂∈l₂′) = ∈-++ˡ ((x₁′ , x₂′) ∷ map (x₁′ ,_) l₂′) (cartesianProduct l₁ (x₂′ ∷ l₂′)) (thereˣ (Core₂.∈-map (x₁′ ,_) x₂∈l₂′))
+    ∈-cartesianProduct (x₁′ ∷ l₁) (x₂′ ∷ l₂′) (thereᴮ x₁∈l₁) x₂∈l₂ = ∈-++ʳ ((x₁′ , x₂′) ∷ map (x₁′ ,_) l₂′) (cartesianProduct l₁ (x₂′ ∷ l₂′)) (∈-cartesianProduct l₁ (x₂′ ∷ l₂′) x₁∈l₁ x₂∈l₂)
