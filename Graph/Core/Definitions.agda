@@ -1,7 +1,7 @@
 module Graph.Core.Definitions {L : Set} where
   open import Relation.Unary using (_⊆_)
 
-  open import Graph.Core {L}
+  open import Graph.Core
 
   data _∈V[_] (x : L) : Graph → Set where
     v-V : x ∈V[ (v x) ]

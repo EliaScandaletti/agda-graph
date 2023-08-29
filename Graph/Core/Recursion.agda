@@ -1,4 +1,4 @@
-module Graph.Core.Recursion {L} where
+module Graph.Core.Recursion {L : Set} where
     open import Data.Nat using (ℕ; zero; suc; s≤s) renaming (_<_ to _<ᴺ_; _+_ to _+ᴺ_)
     open import Data.Nat.Properties using (≤-trans)
 

@@ -1,6 +1,6 @@
 open import Relation.Binary using (DecidableEquality)
 
-module Graph.Core.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} where
+module Graph.Core.Decidability {L : Set} (_≟ᴸ_ : DecidableEquality L) where
   open import Agda.Builtin.Equality using (refl; _≡_)
   open import Function using (id)
   open import Relation.Nullary using (Dec; yes; no)

@@ -1,9 +1,10 @@
 module Graph.Directed.Properties {L : Set} where
   open import Data.Product using (_×_; _,_; map)
 
-  open import Graph.Directed.Core
-  open import Graph.Common.Definitions {L} {_↦_∈E[_]}
-  open import Graph.Common.Properties {L} {_↦_∈E[_]} public
+  open import Graph.Directed {L}
+  open import Graph.Common.Definitions _⊆ⱽ_ _↦_∈E[_]
+  open import Graph.Core.Properties public
+  open import Graph.Common.Properties _⊆ⱽ_ lemma-⊆ⱽ-refl lemma-⊆ⱽ-trans _↦_∈E[_] public
   
   lemma-soundness : {x y : L} → (g : Graph) → x ↦ y ∈E[ g ] → x ∈V[ g ] × y ∈V[ g ]
   lemma-soundness (g₁ + g₂) (+-Eˡ xE₁y) = map +-Vˡ +-Vˡ (lemma-soundness g₁ xE₁y)

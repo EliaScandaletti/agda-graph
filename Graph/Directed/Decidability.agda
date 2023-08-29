@@ -1,13 +1,11 @@
 open import Relation.Binary using (DecidableEquality)
-
-module Graph.Directed.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} where
+module Graph.Directed.Decidability {L : Set} (_≟ᴸ_ : DecidableEquality L) where
   open import Relation.Nullary using (Dec; yes; no)
   open import Relation.Binary using (_⇒_)
   open import Data.Empty using (⊥)
 
-  open import Graph.Directed.Core {L}
-  open import Graph.Core.Decidability {L} {_≟ᴸ_}
-  open import Graph.Common.Definitions {L} {_↦_∈E[_]}
+  open import Graph.Directed
+  open import Graph.Core.Decidability _≟ᴸ_
   
   E-of? : (g : Graph) → (x y : L) → Dec (x ↦ y ∈E[ g ])
   E-of?  ε        x y = no λ ()
@@ -133,4 +131,5 @@ module Graph.Directed.Decidability {L : Set} {_≟ᴸ_ : DecidableEquality L} wh
                                             ; (*-Eˣ (*-Vˡ x∈V₁) y∈V₂) → E₄⋆₂⊆E₃ (*-Eˣ x∈V₁ y∈V₂)
                                             ; (*-Eˣ (*-Vʳ x∈V₁) y∈V₂) → E₅⋆₂⊆E₅ (*-Eˣ x∈V₁ y∈V₂)}
 
-  open import Graph.Common.Decidability {L} {_≟ᴸ_} {_↦_∈E[_]} {E-of?} {_⊆ᴱ?_} public
+  open import Graph.Common.Decidability _≟ᴸ_ _⊆ⱽ?_ _⊆ᴱ?_ public
+ 
