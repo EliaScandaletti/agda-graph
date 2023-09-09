@@ -2,8 +2,8 @@ module Example where
   open import Agda.Builtin.Equality using (refl)
   open import Data.Maybe using (Maybe; maybe′)
   open import Data.Product using (_×_; _,_)
-  open import Data.Nat using (ℕ) renaming (_+_ to _+ᴺ_)
-  open import Data.Nat.Properties renaming (_≟_ to _≟ᴺ_; _≤?_ to _≤?ᴺ_)
+  open import Data.Nat using (ℕ)
+  open import Data.Nat.Properties using (+-0-isMonoid; ≤-isDecTotalOrder) renaming (_≟_ to _≟ᴺ_)
   open import Data.List.Membership.Propositional using (_∈_)
   open import Data.List.Relation.Unary.Any using (here; there)
 
@@ -16,8 +16,9 @@ module Example where
   open import Graph.Undirected.Properties
   open import Graph.Common.Algo.Definitions vertices E-of?
   open import Graph.Common.Algo.Properties {_≟ᴸ_ = _≟ᴺ_} vertices ∈V⇒∈v ∈v⇒∈V E-of? lemma-soundness
-  open import Graph.Common.Algo.Path V-of? E-of?
-  open import Graph.Common.Algo.FloydWarshall vertices V-of? E-of? _+ᴺ_ _≤?ᴺ_ 0
+  open import Graph.Common.Algo.Path V-of? E-of? lemma-soundness
+  open Weighted +-0-isMonoid ≤-isDecTotalOrder
+  open import Graph.Common.Algo.FloydWarshall _≟ᴺ_ vertices V-of? E-of? lemma-soundness +-0-isMonoid ≤-isDecTotalOrder
 
 
   g = (v 1 * v 2 * v 3) * (v 0 + v 4) + (v 0 * v 3 * v 5)
@@ -33,7 +34,7 @@ module Example where
           +----------+
   -}
 
-  w : {x y : ℕ} → x ↦ y ∈E[ g ] → ℕ
+  w : {x y : ℕ} → .(x ↦ y ∈E[ g ]) → ℕ
   w {0} {1} _ = 1
   w {1} {0} _ = 1
   w {0} {2} _ = 2
@@ -56,7 +57,7 @@ module Example where
   w {4} {3} _ = 9999
   w {3} {5} _ = 2
   w {5} {3} _ = 2
-  w {x} {y} _ = 99999 -- not reachable
+  w {x} {y} _ = _ -- not reachable
 
 
   x : Maybe (Path g 3 4)
